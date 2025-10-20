@@ -1,0 +1,17 @@
+# Environnement virtuel
+env/
+venv/
+__pycache__/
+*.pyc
+
+# Fichiers de configuration sensibles
+.env
+
+# Logs
+*.log
+logs/
+airflow_logs/
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # --- PostgreSQL pour ETL ---
+  db:
+    image: postgres:14.1-alpine
+    container_name: postgres_hackathonDataBeez
+    env_file:
+      - .env
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init_airflow_db.sql:/docker-entrypoint-initdb.d/init_airflow_db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- Airflow orchestrateur ---
+  airflow:
+    build: .
+    container_name: airflow_etl
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./etl_pipelines:/opt/airflow/etl_pipeline
+      - ./data_corpinius:/opt/airflow/data_corpinius
+      - ./data:/opt/airflow/data
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create --username ${AIRFLOW_USER} --firstname ${AIRFLOW_FIRSTNAME} --lastname ${AIRFLOW_LASTNAME} --role ${AIRFLOW_ROLE} --email ${AIRFLOW_EMAIL} --password ${AIRFLOW_PASSWORD} &&
+        airflow standalone
+      "
+
+volumes:
+  db_data:
+  logs:
