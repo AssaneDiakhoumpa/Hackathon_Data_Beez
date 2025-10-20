@@ -38,7 +38,7 @@ def transform(weather_df, fao_df):
             raise KeyError(f"Colonne 'date' manquante dans {name}")
 
     #Fusion progressive
-    merge_keys = ['region']
+    merge_keys = ['region', 'date']
     logging.info("Fusion weather + FAO...")
     merged = weather.merge(fao, on=merge_keys, how='left')
 
