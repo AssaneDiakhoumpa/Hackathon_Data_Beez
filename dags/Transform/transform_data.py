@@ -7,17 +7,13 @@ def transform(weather_df, fao_df):
     Transformation et fusion des données météo et FAO uniquement.
     """
 
-    logging.info("🔧 Démarrage de la fonction transform...")
+    logging.info("Démarrage de la fonction transform...")
 
-    # -----------------------------
-    # 1️⃣ Copie des DataFrames pour éviter les effets de bord
-    # -----------------------------
+    #Copie des DataFrames pour éviter les effets de bord
     weather = weather_df.copy()
     fao = fao_df.copy()
 
-    # -----------------------------
-    # 2️⃣ Normalisation des noms de colonnes
-    # -----------------------------
+    #Normalisation des noms de colonnes
     # Harmonisation FAO
     if 'annee' in fao.columns:
         fao = fao.rename(columns={'annee': 'date'})
@@ -32,27 +28,21 @@ def transform(weather_df, fao_df):
     if 'date' in weather.columns:
         weather['date'] = pd.to_datetime(weather['date'], errors='coerce')
 
-    logging.info("✅ Colonnes harmonisées.")
+    logging.info("Colonnes harmonisées.")
 
-    # -----------------------------
-    # 3️⃣ Vérification des colonnes clés avant fusion
-    # -----------------------------
+    #Vérification des colonnes clés avant fusion
     for name, df in [('weather', weather), ('fao', fao)]:
         if 'region' not in df.columns:
-            raise KeyError(f"❌ Colonne 'region' manquante dans {name}")
+            raise KeyError(f"Colonne 'region' manquante dans {name}")
         if 'date' not in df.columns:
-            raise KeyError(f"❌ Colonne 'date' manquante dans {name}")
+            raise KeyError(f"Colonne 'date' manquante dans {name}")
 
-    # -----------------------------
-    # 4️⃣ Fusion progressive
-    # -----------------------------
-    merge_keys = ['region', 'date']
-    logging.info("🔄 Fusion weather + FAO...")
+    #Fusion progressive
+    merge_keys = ['region']
+    logging.info("Fusion weather + FAO...")
     merged = weather.merge(fao, on=merge_keys, how='left')
 
-    # -----------------------------
-    # 5️⃣ Nettoyage et enrichissement
-    # -----------------------------
+    #Nettoyage et enrichissement
     merged = merged.drop_duplicates()
 
     # Remplacement des valeurs manquantes numériques par la moyenne de la colonne
@@ -63,6 +53,6 @@ def transform(weather_df, fao_df):
     if 'temperature_2m_max' in merged.columns and 'temperature_2m_min' in merged.columns:
         merged['temp_moy'] = (merged['temperature_2m_max'] + merged['temperature_2m_min']) / 2
 
-    logging.info(f"✅ Fusion terminée. Shape finale : {merged.shape}")
+    logging.info(f"Fusion terminée. Shape finale : {merged.shape}")
 
     return merged

@@ -34,10 +34,10 @@ def get_fao_data(file_path='data/EAA_2017_2022_T3_Superficie, Rendement et Produ
         if possible_cols:
             df.rename(columns={possible_cols[0]: 'region'}, inplace=True)
         else:
-            print(f"⚠️ Aucune colonne 'region' détectée. Colonnes: {df.columns.tolist()}")
+            print(f"Aucune colonne 'region' détectée. Colonnes: {df.columns.tolist()}")
 
-        print(f"✅ Fichier lu : {path.name} ({len(df)} lignes, {len(df.columns)} colonnes)")
+        print(f"Fichier lu : {path.name} ({len(df)} lignes, {len(df.columns)} colonnes)")
         return df
 
     except Exception as e:
-        raise RuntimeError(f"❌ Erreur lecture fichier FAO {path.name} : {e}")
+        raise RuntimeError(f"Erreur lecture fichier FAO {path.name} : {e}")

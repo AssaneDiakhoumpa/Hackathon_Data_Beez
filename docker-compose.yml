@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # --- PostgreSQL pour ETL ---
+  # PostgreSQL pour ETL 
   db:
     image: postgres:14.1-alpine
     container_name: postgres_hackathonDataBeez
@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- Airflow orchestrateur ---
+  # Airflow orchestrateur 
   airflow:
     build: .
     container_name: airflow_etl

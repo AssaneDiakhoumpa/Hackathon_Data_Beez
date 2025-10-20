@@ -36,7 +36,7 @@ def get_weather_for_south_regions():
 
     all_csvs = []
     for region, (lat, lon) in regions.items():
-        print(f"📡 Récupération des données pour {region}...")
+        print(f"Récupération des données pour {region}...")
         try:
             df = get_weather_data(lat, lon)
             df["region"] = region
@@ -46,9 +46,9 @@ def get_weather_for_south_regions():
             df.to_csv(file_path, index=False)
             all_csvs.append(file_path)
 
-            print(f"✅ {region} sauvegardé ({len(df)} lignes)")
+            print(f"{region} sauvegardé ({len(df)} lignes)")
         except Exception as e:
-            print(f"⚠️ Erreur pour {region} : {e}")
+            print(f"Erreur pour {region} : {e}")
 
     # Fusion incrémentale des CSV régionaux
     merged_path = "/tmp/data/weather.csv"
@@ -63,7 +63,7 @@ def get_weather_for_south_regions():
             else:
                 df.to_csv(outfile, index=False, header=False)
     
-    print(f"✅ Fusion finale enregistrée (mode append): {merged_path}")
+    print(f"Fusion finale enregistrée (mode append): {merged_path}")
     return pd.read_csv(merged_path)
 
 if __name__ == "__main__":
