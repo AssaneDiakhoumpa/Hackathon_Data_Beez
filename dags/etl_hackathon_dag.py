@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from Extract.weather_extractor import get_weather_for_south_regions
+from Extract.weather_extractor import get_weather_for_all_departments
 from Extract.fao_extractor import get_fao_data
 from Extract.copernicus_extractor import get_copernicus_data
 from Transform.transform_data import transform
@@ -54,7 +54,7 @@ def extract_data(**context):
     # ⚡ EXTRACTION 1 : WEATHER (traiter et libérer immédiatement)
     try:
         logger.info("Extraction Weather...")
-        weather = get_weather_for_south_regions()
+        weather = get_weather_for_all_departments()
         logger.info(f"Weather récupéré: {len(weather)} lignes")
         log_memory_usage("Après Weather")
         

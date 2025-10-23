@@ -4,55 +4,59 @@ import logging
 
 def transform(weather_df, fao_df):
     """
-    Transformation et fusion des données météo et FAO uniquement.
+    Transformation et fusion des données météo et FAO par département uniquement.
     """
 
     logging.info("Démarrage de la fonction transform...")
 
-    #Copie des DataFrames pour éviter les effets de bord
+    #Copie pour éviter les effets de bord
     weather = weather_df.copy()
     fao = fao_df.copy()
 
-    #Normalisation des noms de colonnes
-    # Harmonisation FAO
-    if 'annee' in fao.columns:
-        fao = fao.rename(columns={'annee': 'date'})
-        fao['date'] = pd.to_datetime(fao['date'], format='%Y', errors='coerce')
+    #Normalisation des noms de colonnes FAO
+    fao = fao.rename(columns={
+        'Annee': 'annee',
+        'REGION': 'region',
+        'Département': 'departement',
+        'Culture': 'culture',
+        'Indicateur': 'indicateur',
+        'Valeur': 'valeur'
+    })
 
-    if 'REGION' in fao.columns:
-        fao = fao.rename(columns={'REGION': 'region'})
+    #Normalisation des noms de colonnes météo
+    if 'departement' not in weather.columns:
+        raise KeyError("Colonne 'departement' manquante dans le DataFrame météo")
 
-    # Harmonisation WEATHER
-    if 'REGION' in weather.columns:
-        weather = weather.rename(columns={'REGION': 'region'})
-    if 'date' in weather.columns:
-        weather['date'] = pd.to_datetime(weather['date'], errors='coerce')
+    #Agrégation météo par département (moyenne sur toute la période)
+    weather_agg = weather.groupby('departement', as_index=False).agg({
+        'temp': 'mean',
+        'feels_like': 'mean',
+        'humidity': 'mean',
+        'pressure': 'mean',
+        'wind_speed': 'mean'
+    })
+    logging.info("Données météo agrégées par département.")
 
-    logging.info("Colonnes harmonisées.")
+    #Agrégation FAO par département (moyenne des valeurs numériques)
+    fao['valeur'] = pd.to_numeric(fao['valeur'], errors='coerce')
+    fao_agg = fao.groupby('departement', as_index=False).agg({'valeur': 'mean'})
+    logging.info("Données FAO agrégées par département.")
 
-    #Vérification des colonnes clés avant fusion
-    for name, df in [('weather', weather), ('fao', fao)]:
-        if 'region' not in df.columns:
-            raise KeyError(f"Colonne 'region' manquante dans {name}")
-        if 'date' not in df.columns:
-            raise KeyError(f"Colonne 'date' manquante dans {name}")
+    #Fusion finale par département
+    merged = pd.merge(weather_agg, fao_agg, on='departement', how='left')
 
-    #Fusion progressive
-    merge_keys = ['region', 'date']
-    logging.info("Fusion weather + FAO...")
-    merged = weather.merge(fao, on=merge_keys, how='left')
-
-    #Nettoyage et enrichissement
-    merged = merged.drop_duplicates()
-
-    # Remplacement des valeurs manquantes numériques par la moyenne de la colonne
+    #Remplissage des valeurs manquantes
     for col in merged.select_dtypes(include=[np.number]).columns:
         merged[col] = merged[col].fillna(merged[col].mean())
 
-    # Ajout éventuel d’indicateurs dérivés
-    if 'temperature_2m_max' in merged.columns and 'temperature_2m_min' in merged.columns:
-        merged['temp_moy'] = (merged['temperature_2m_max'] + merged['temperature_2m_min']) / 2
+    # #Calculs dérivés éventuels
+    # merged['temp_moy'] = (merged['temp_min'] + merged['temp_max']) / 2
+    # merged['temp_moy'] = merged['temp']
+
+    #Nettoyage final
+    merged = merged.drop_duplicates()
 
     logging.info(f"Fusion terminée. Shape finale : {merged.shape}")
 
     return merged
+

@@ -6,7 +6,7 @@ Ce projet implémente un **pipeline ETL** (Extract, Transform, Load) pour centra
 
 L’objectif est de créer une **base de données exploitable** pour le suivi agro-climatique et la prédiction de rendements.
 
----
+
 
 ## Architecture du pipeline
 
@@ -14,7 +14,7 @@ L’objectif est de créer une **base de données exploitable** pour le suivi ag
 
 * Les données sont extraites depuis **trois sources** principales :
 
-  1. **Weather (Météo)** : températures, précipitations, humidité par région et date.
+  1. **Weather (Météo)** : températures, précipitations, humidité par département et date.
   2. **FAO** : indicateurs agricoles (rendement, culture, département, etc.).
   3. **Copernicus** : indices agro-climatiques (optionnel, très volumineux).
 
@@ -22,18 +22,18 @@ L’objectif est de créer une **base de données exploitable** pour le suivi ag
 
 * Les gros datasets sont lus et sauvegardés **par chunks** pour réduire l’usage mémoire et éviter les crashs.
 
----
+
 
 ### B. Transformation (Transform)
 
 1. **Normalisation des colonnes** :
 
-   * Harmonisation des noms de colonnes pour permettre la fusion (`region`, `date`, etc.).
+   * Harmonisation des noms de colonnes pour permettre la fusion (`departement`, `date`, etc.).
    * Conversion des dates en format standard (`datetime`).
 
 2. **Fusion des datasets** :
 
-   * Les données météo et FAO sont fusionnées sur `region` et `date`.
+   * Les données météo et FAO sont fusionnées sur `departement` et `date`.
    * Type de fusion : `left join` pour conserver toutes les données météo même si FAO est manquant.
 
 3. **Nettoyage** :
