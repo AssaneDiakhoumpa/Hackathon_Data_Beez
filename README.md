@@ -100,12 +100,3 @@ L’objectif est de créer une **base de données exploitable** pour le suivi ag
    ```sql
    SELECT * FROM weather_agro_data;
    ```
-
-
-
-## Points clés à expliquer au jury
-
-* La **fusion FAO/météo** est faite sur les clés `region` et `date`.
-* Les colonnes FAO vides sont normales si le dataset FAO n’a pas de valeur correspondante.
-* Pipeline conçu pour **être réutilisable et extensible** à d’autres régions ou datasets.
-* Possibilité d’ajouter des **analyses ou indicateurs dérivés** à partir des colonnes existantes.
