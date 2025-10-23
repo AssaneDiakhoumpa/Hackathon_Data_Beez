@@ -51,7 +51,7 @@ def extract_data(**context):
     # Créer le dossier de sortie
     os.makedirs("/tmp/data", exist_ok=True)
     
-    # ⚡ EXTRACTION 1 : WEATHER (traiter et libérer immédiatement)
+    # EXTRACTION 1 : WEATHER (traiter et libérer immédiatement)
     try:
         logger.info("Extraction Weather...")
         weather = get_weather_for_all_departments()
@@ -70,7 +70,7 @@ def extract_data(**context):
         logger.error(f"Erreur Weather: {str(e)}")
         raise
     
-    # ⚡ EXTRACTION 2 : FAO (traiter et libérer immédiatement)
+    # EXTRACTION 2 : FAO (traiter et libérer immédiatement)
     try:
         logger.info("Extraction FAO...")
         
@@ -91,7 +91,7 @@ def extract_data(**context):
         logger.error(f"Erreur FAO: {str(e)}")
         raise
     
-    # ⚡ EXTRACTION 3 : COPERNICUS (le plus lourd - optimisé)
+    # EXTRACTION 3 : COPERNICUS (le plus lourd - optimisé)
     try:
         logger.info("Extraction Copernicus...")
         
@@ -145,7 +145,7 @@ def transform_data(**context):
         fao = pd.read_csv("/tmp/data/fao.csv", low_memory=False)
         log_memory_usage("Après chargement FAO")
         
-        # ⚡ Suppression du chargement Copernicus
+        # Suppression du chargement Copernicus
         # logger.info("Chargement Copernicus...")
         # copernicus = pd.read_csv("/tmp/data/copernicus.csv", low_memory=False)
         # log_memory_usage("Après chargement Copernicus")
