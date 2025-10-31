@@ -2,7 +2,7 @@
 
 ## Présentation du projet
 
-Ce projet implémente un **pipeline ETL** (Extract, Transform, Load) pour centraliser, transformer et analyser des données météorologiques et agricoles (FAO) du Sud du Sénégal.
+Ce projet implémente un **pipeline ETL** (Extract, Transform, Load) pour centraliser, transformer et analyser des données météorologiques et agricoles (FAO) du Sénégal.
 
 L’objectif est de créer une **base de données exploitable** pour le suivi agro-climatique et la prédiction de rendements.
 
