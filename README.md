@@ -4,99 +4,126 @@
 
 Ce projet implémente un **pipeline ETL** (Extract, Transform, Load) pour centraliser, transformer et analyser des données météorologiques et agricoles (FAO) du Sénégal.
 
-L’objectif est de créer une **base de données exploitable** pour le suivi agro-climatique et la prédiction de rendements.
+L'objectif est de créer une **base de données exploitable** pour le suivi agro-climatique et la prédiction de rendements.
 
+## Architecture Docker Compose
 
+```yaml
+version: '3.8'
 
-## Architecture du pipeline
+services:
+  # PostgreSQL pour metadata Airflow & données ETL
+  db:
+    image: postgres:14.1-alpine
+    container_name: postgres_hackathonDataBeez
+    env_file: [.env]
+    ports: ["5433:5432"]
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init_airflow_db.sql:/docker-entrypoint-initdb.d/init_airflow_db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Airflow avec SequentialExecutor (idéal hackathon/local)
+  airflow:
+    build: .
+    container_name: airflow_etl
+    restart: always
+    env_file: [.env]
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
+    depends_on:
+      db: { condition: service_healthy }
+    ports: ["8080:8080"]
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./etl_pipelines:/opt/airflow/etl_pipeline
+      - ./data_corpinius:/opt/airflow/data_corpinius
+      - ./data:/opt/airflow/data
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create --username ${AIRFLOW_USER} 
+                             --firstname ${AIRFLOW_FIRSTNAME} 
+                             --lastname ${AIRFLOW_LASTNAME} 
+                             --role ${AIRFLOW_ROLE} 
+                             --email ${AIRFLOW_EMAIL} 
+                             --password ${AIRFLOW_PASSWORD} &&
+        airflow standalone
+      "
+
+volumes:
+  db_data:
+  logs:
+```
+
+**Ports** : Airflow UI → `localhost:8080`, Postgres → `localhost:5433`.[2][6]
+
+## Commandes d'exécution
+
+```bash
+# 1. Build & démarrage (premier lancement)
+docker compose up --build -d
+
+# 2. Vérification
+docker compose ps
+docker compose logs db        # Logs Postgres
+docker compose logs airflow   # Logs Airflow
+
+# 3. Accès Postgres
+docker exec -it postgres_hackathonDataBeez psql -U postgres -d airflow
+
+-- Lister bases de données
+\l
+
+-- Se connecter à la DB Airflow (créée par init_airflow_db.sql)
+\c airflow
+
+-- Lister tables (DAG runs, task instances, etc.)
+\dt
+
+# 4. Airflow UI: http://localhost:8080
+# 5. Arrêt propre
+docker compose down
+```
+
+## Architecture du pipeline ETL
 
 ### A. Extraction (Extract)
-
-* Les données sont extraites depuis **trois sources** principales :
-
-  1. **Weather (Météo)** : températures, précipitations, humidité par département et date.
-  2. **FAO** : indicateurs agricoles (rendement, culture, département, etc.).
-  3. **Copernicus** : indices agro-climatiques (optionnel, très volumineux).
-
-* Les fichiers sont **sauvegardés temporairement** dans `/tmp/data` pour éviter de garder de gros DataFrames en mémoire.
-
-* Les gros datasets sont lus et sauvegardés **par chunks** pour réduire l’usage mémoire et éviter les crashs.
-
-
+- **Weather** : API météo par département Sénégal.[1]
+- **FAO** : Données agricoles (rendement, culture).
+- **Copernicus** : Indices sol (SWI) par chunks (optimisation mémoire).
+- Sauvegarde `/tmp/data/*.csv` + libération mémoire immédiate.
 
 ### B. Transformation (Transform)
-
-1. **Normalisation des colonnes** :
-
-   * Harmonisation des noms de colonnes pour permettre la fusion (`departement`, `date`, etc.).
-   * Conversion des dates en format standard (`datetime`).
-
-2. **Fusion des datasets** :
-
-   * Les données météo et FAO sont fusionnées sur `departement` et `date`.
-   * Type de fusion : `left join` pour conserver toutes les données météo même si FAO est manquant.
-
-3. **Nettoyage** :
-
-   * Suppression des doublons.
-   * Remplacement des valeurs manquantes pour les colonnes numériques par la moyenne de la colonne.
-   * Calcul d’indicateurs dérivés si nécessaire (ex. `temp_moy` à partir de `temperature_2m_max` et `temperature_2m_min`).
-
-4. **Résultat final** :
-
-   * Un DataFrame harmonisé contenant :
-
-     * Données météo : température, précipitation, humidité
-     * Données FAO : culture, indicateur, rendement
-   * Sauvegardé dans `/tmp/data/final.csv` pour le chargement.
-
----
+- Fusion `weather + FAO` sur `departement`/`date` (left join).
+- Nettoyage : doublons, NaN → moyenne, normalisation dates.
+- Résultat : `/tmp/data/final.csv`.
 
 ### C. Chargement (Load)
+- Table PostgreSQL : `weather_agro_data`.
+- Chargement par chunks (10k lignes) avec `if_exists='append'`.
 
-* Les données transformées sont **chargées dans PostgreSQL**.
-* Fonctionnalités clés :
+## Monitoring & Debug
 
-  * Création automatique de la table `weather_agro_data` si elle n’existe pas.
-  * Création automatique des colonnes manquantes correspondant aux nouvelles données.
-  * Chargement par chunks pour les gros volumes de données.
-* La table finale contient les colonnes :
+```bash
+# Logs DAGs
+docker compose logs -f airflow
 
-  ```
-  id, region, date, temperature_c, precipitation_mm, humidity_percent, departement, culture, indicateur, valeur
-  ```
-* Les colonnes FAO peuvent rester vides si le dataset FAO ne contient pas de données pour certaines régions ou années. Cela **n’est pas un bug**, mais un comportement attendu lié à la disponibilité des données.
+# Stats Postgres
+docker exec -it postgres_hackathonDataBeez psql -U postgres -d airflow \
+  -c "SELECT dag_id, count(*) FROM dag_run GROUP BY dag_id;"
 
+# Mémoire Airflow
+docker exec airflow_etl psutil.Process().memory_info().rss / 1024 / 1024
+```
+## Vérifier le résultat final dans PostgreSQL :
 
-
-## Optimisations et bonnes pratiques
-
-* **Gestion mémoire** :
-
-  * Libération des DataFrames après chaque étape.
-  * Utilisation de `gc.collect()` pour forcer le garbage collector.
-* **Robustesse** :
-
-  * Logs détaillés à chaque étape.
-  * Gestion des fichiers manquants et erreurs avec Airflow.
-* **Scalabilité** :
-
-  * Lecture et écriture des gros fichiers par chunks.
-  * Pipeline prêt pour de grandes quantités de données Copernicus.
-
-
-
-## Utilisation
-
-1. Démarrer le conteneur Airflow.
-2. Le DAG `etl_hackathon_dag` s’exécute automatiquement toutes les 30 minutes (configurable).
-3. Les tâches :
-
-   ```
-   extract_data -> transform_data -> load_data
-   ```
-4. Vérifier le résultat final dans PostgreSQL :
 
    ```sql
    SELECT * FROM weather_agro_data;
-   ```
+   ```"
